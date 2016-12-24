@@ -1,0 +1,12 @@
+package: pinga.go/local_grip
+import:
+- package: github.com/russross/blackfriday
+  version: ~1.4.0
+- package: github.com/shurcooL/sanitized_anchor_name
+- package: github.com/howeyc/fsnotify
+  version: ^0.9.0
+- package: github.com/fsnotify/fsnotify
+  version: ^1.4.2
+- package: golang.org/x/sys
+  subpackages:
+  - unix
