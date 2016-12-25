@@ -1,8 +1,6 @@
-hash: 3a4ec1d720182da7754587889de5aa6999c801a4c70db2ffa9c5223505b7c664
-updated: 2016-12-24T13:25:11.212453912+01:00
+hash: f2f26067d721954ff61dc2cebed2578213605eddf2e2f11aa8fda5c0cdc70e78
+updated: 2016-12-25T15:47:33.2631062+01:00
 imports:
-- name: github.com/fsnotify/fsnotify
-  version: 629574ca2a5df945712d3079857300b5e4da0236
 - name: github.com/howeyc/fsnotify
   version: 441bbc86b167f3c1f4786afae9931403b99fdacf
 - name: github.com/russross/blackfriday

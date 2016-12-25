@@ -3,7 +3,7 @@ package main
 import (
   "fmt"
   "io/ioutil"
-  "github.com/fsnotify/fsnotify"
+  "github.com/howeyc/fsnotify"
   "github.com/gorilla/websocket"
   "github.com/russross/blackfriday"
   "github.com/dron22/gomd/html"
@@ -17,6 +17,7 @@ import (
 var host = "127.0.0.1"
 var port = 6419
 var renderInterval = time.Millisecond * 100
+var rewatchTimeout = time.Second * 5
 
 var upgrader = websocket.Upgrader{
   ReadBufferSize: 1024,
@@ -31,27 +32,37 @@ func watchFile(filepath string) (chan bool, error) {
         return changed, err
     }
 
-    go func(changed chan bool) {
+    // Process events
+    go func() {
         for {
             select {
-            case event := <-watcher.Events:
+            case ev := <-watcher.Event:
                 switch {
-                case event.Op&fsnotify.Write == fsnotify.Write:
+                case ev.IsModify():
                     changed <- true
-                case event.Op&fsnotify.Remove == fsnotify.Remove:
-                    log.Println("file removed:", event.Name)
-                    return
-                case event.Op&fsnotify.Rename == fsnotify.Rename:
-                    log.Println("file renamed:", event.Name)
-                    return
+                case ev.IsDelete():
+                    // certain texteditors like vim don't modify but delete and replace a file upon save. Thus Watch() has to be called again to continue watching after the delete.
+                    start := time.Now()
+                    for {
+                        err = watcher.Watch(filepath)
+                        switch {
+                        case time.Now().Sub(start) > rewatchTimeout:
+                            log.Fatalf("File deleted and not recreated within timeout: %v", filepath)
+                            return
+                        case err != nil:
+                            continue
+                        }
+                        break
+                    }
+                    changed <- true
                 }
-            case err := <-watcher.Errors:
+            case err := <-watcher.Error:
                 log.Println("error:", err)
             }
         }
-    }(changed)
+    }()
 
-    err = watcher.Add(filepath)
+    err = watcher.Watch(filepath)
     if err != nil {
         return changed, err
     }
@@ -61,7 +72,7 @@ func watchFile(filepath string) (chan bool, error) {
 func renderPage(filepath string) ([]byte, error) {
     input, err := ioutil.ReadFile(filepath)
     if err != nil {
-        fmt.Printf("error reading file", err)
+        log.Printf("error reading file: %v\n", err)
         return nil, err
     }
 
@@ -85,16 +96,17 @@ func forwardMessageLoop(filepath string) {
     var err error
     changed, err := watchFile(filepath)
     if err != nil {
-        log.Fatalf("error watching file: %v", err)
+        log.Fatalf("error watching file: %v\n", err)
     }
 
     for {
         _ = <- changed
         err = sendRenderedPage(filepath, connections)
         if err != nil {
-            log.Fatalf("error render/sending page: %v", err)
+            log.Fatalf("error render/sending page: %v\n", err)
         }
     }
+    log.Fatal("Exited forwardMessageLoop")
 }
 
 func GetWebSocketHandler(filepath string) http.HandlerFunc {
@@ -106,7 +118,7 @@ func GetWebSocketHandler(filepath string) http.HandlerFunc {
         }
         err = sendRenderedPage(filepath, []*websocket.Conn{conn})
         if err != nil {
-            log.Fatalf("error render/sending page: %v", err)
+            log.Fatalf("error render/sending page: %v\n", err)
         }
         connections = append(connections, conn)
     }
@@ -128,7 +140,7 @@ func main() {
 
     filepath := args[1]
     if _, err := os.Stat(filepath); err != nil {
-        fmt.Printf("file %v does not exist", filepath)
+        fmt.Printf("file %v does not exist\n", filepath)
         os.Exit(1)
     }
 
@@ -137,5 +149,5 @@ func main() {
     fmt.Printf("Server running on http://%v:%v/\n", host, port)
     http.HandleFunc("/", PageHandler)
     http.HandleFunc("/ws", GetWebSocketHandler(filepath))
-    http.ListenAndServe(fmt.Sprintf("%v:%v", host, port), nil)
+    log.Fatal(http.ListenAndServe(fmt.Sprintf("%v:%v", host, port), nil))
 }
