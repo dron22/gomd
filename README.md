@@ -1,9 +1,7 @@
 
 # Gomd
 
-Render and preview markdown files locally.
-
-Gomd is a command-line server written in go using the [blackfriday](github.com/russross/blackfriday) package to render markdown and [websockets](https://github.com/gorilla/websocket) to update the preview upon change of the previewed file. It was inspired by python's [grip](https://github.com/joeyespo/grip), but currently still lacks advanced features like (code) highlighting etc. of [kramdown](http://github.com/gettalong/kramdown).
+Gomd is a command-line server written in go to render and preview markdown files locally. It is using the [blackfriday](github.com/russross/blackfriday) package for markdown rendering and [websockets](https://github.com/gorilla/websocket) for continuous updating of the preview upon every change of the previewed file. It was inspired by python's [grip](https://github.com/joeyespo/grip), but currently still lacks advanced features like code highlighting.
 
 ## Getting started
 
@@ -11,7 +9,7 @@ Gomd is a command-line server written in go using the [blackfriday](github.com/r
 
     $ go get github.com/dron22/gomd
 
-### Start server
+### Preview markdown file
 
     $ gomd /path/to/markdownfile.md
 
